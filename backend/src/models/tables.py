@@ -21,6 +21,29 @@ deliveries = Table('report_deliveries', metadata, Column('id', Integer, primary_
                    Column('schedule_id', Integer, nullable=False), Column('run_id', Integer, nullable=False),
                    Column('recipient', String(100), nullable=False), Column('scheduled', Double, nullable=False),
                    Column('delivered', Double, nullable=False), UniqueConstraint('schedule_id', 'scheduled'))
+outage_scopes = Table('lift_outage_scopes', metadata, Column('id', Integer, primary_key=True),
+                     Column('dataset_id', Integer, nullable=False),
+                     Column('plan_date', String(10), nullable=False),
+                     Column('version', Integer, nullable=False), Column('owner', String(40), nullable=False),
+                     Column('updated', Double, nullable=False),
+                     UniqueConstraint('dataset_id', 'plan_date'))
+outage_windows = Table('lift_outage_windows', metadata, Column('id', Integer, primary_key=True),
+                      Column('dataset_id', Integer, nullable=False, index=True),
+                      Column('plan_date', String(10), nullable=False, index=True),
+                      Column('elevator_id', String(40), nullable=False),
+                      Column('start_at', String(5), nullable=False), Column('end_at', String(5), nullable=False),
+                      Column('version', Integer, nullable=False), Column('owner', String(40), nullable=False),
+                      Column('updated', Double, nullable=False),
+                      UniqueConstraint('dataset_id', 'plan_date', 'elevator_id', 'start_at'))
+reschedules = Table('teardown_reschedules', metadata, Column('id', Integer, primary_key=True),
+                    Column('dataset_id', Integer, nullable=False, index=True),
+                    Column('plan_date', String(10), nullable=False),
+                    Column('threshold_minutes', Double, nullable=False),
+                    Column('outage_snapshot', JSON, nullable=False), Column('scope_version', Integer, nullable=False),
+                    Column('request_checksum', String(64), nullable=False, unique=True),
+                    Column('state', String(16), nullable=False, index=True), Column('owner', String(40), nullable=False),
+                    Column('created', Double, nullable=False), Column('started', Double), Column('finished', Double),
+                    Column('result', JSON), Column('error', Text))
 audit = Table('operation_audit', metadata, Column('id', Integer, primary_key=True),
               Column('at', Double, nullable=False), Column('actor', String(40), nullable=False),
               Column('action', String(30), nullable=False), Column('subject', Integer, nullable=False))

@@ -12,3 +12,4 @@ class State(str, Enum):
     running = 'running'
     completed = 'completed'
     failed = 'failed'
+    superseded = 'superseded'

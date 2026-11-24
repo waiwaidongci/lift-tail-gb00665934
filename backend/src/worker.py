@@ -7,6 +7,10 @@ from tempfile import NamedTemporaryFile
 from src.config.settings import ARTIFACTS
 from src.models.database import cache
 from src.services.domain import compute
+from src.services.reschedule import reschedule
+from src.services.reschedule_workflow import (
+    claim_reschedule, finish_reschedule,
+)
 from src.services.workflow import claim_run, finish_run, publish_due
 from src.utils.exports import write_csv
 
@@ -31,12 +35,30 @@ def calculate(job):
         finish_run(key, claim, report, None)
 
 
+def recalculate(job):
+    key, claim, rows, options, scope_version = job
+    try:
+        plan = reschedule(rows, options)
+        json.dumps(plan, allow_nan=False)
+    except ValueError as error:
+        finish_reschedule(key, claim, scope_version, None, str(error))
+    except Exception:
+        logging.exception('Reschedule %s failed', key)
+        finish_reschedule(key, claim, scope_version, None, '重排失败，请核对停运时段并重新提交。')
+    else:
+        finish_reschedule(key, claim, scope_version, plan, None)
+
+
 def work():
     while True:
         try:
             job = claim_run()
             if job:
                 calculate(job)
+            else:
+                pending = claim_reschedule()
+                if pending:
+                    recalculate(pending)
             publish_due()
             cache.set('worker:heartbeat', str(time.time()), ex=25)
         except Exception:

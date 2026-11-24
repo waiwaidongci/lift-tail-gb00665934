@@ -28,3 +28,21 @@ class Delivery(BaseModel):
     recipient: str = Field(min_length=2, max_length=100)
     cadence: Literal['once', 'daily']
     scheduled_at: datetime | None = None
+
+
+class OutageItem(BaseModel):
+    elevator_id: str = Field(min_length=1, max_length=40)
+    start_at: str = Field(min_length=5, max_length=5)
+    end_at: str = Field(min_length=5, max_length=5)
+
+
+class OutageUpdate(BaseModel):
+    dataset_id: int = Field(gt=0)
+    plan_date: str = Field(min_length=10, max_length=10)
+    outages: list[OutageItem] = Field(default_factory=list, max_length=20)
+
+
+class RescheduleRequest(BaseModel):
+    dataset_id: int = Field(gt=0)
+    plan_date: str = Field(min_length=10, max_length=10)
+    threshold_minutes: float = Field(default=30, gt=0, le=480)

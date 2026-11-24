@@ -5,10 +5,16 @@ from fastapi import APIRouter, Depends, HTTPException, Response
 from src.config.settings import ARTIFACTS
 from src.constants.enums import Role
 from src.controllers.query import delivery_status, jobs, recent_activity, require_row, revisions
-from src.models.tables import datasets, runs
-from src.schemas.requests import Delivery, Import, Login, Review, Run
+from src.models.tables import datasets, reschedules, runs
+from src.schemas.requests import (
+    Delivery, Import, Login, OutageUpdate, RescheduleRequest, Review, Run,
+)
 from src.services.data import PROFILE, csv_records, save_revision
 from src.services.domain import sample_rows
+from src.services.reschedule import available_dates
+from src.services.reschedule_workflow import (
+    list_outages, list_reschedules, replace_outages, submit_reschedule,
+)
 from src.services.workflow import add_run, cancel_schedule, review_run, schedule_report
 from src.utils.exports import write_csv
 from src.utils.security import allowed, authenticate, signed_in
@@ -100,6 +106,37 @@ def stop_schedule(key: int, account=Depends(reviewer)):
 @router.get('/audit')
 def activity(account=Depends(signed_in)):
     return recent_activity()
+
+
+@router.get('/reschedule/dates/{key}')
+def reschedule_dates(key: int, account=Depends(signed_in)):
+    dataset = require_row(datasets, key, '数据版本')
+    return {'dates': available_dates(dataset['records'])}
+
+
+@router.get('/reschedule/outages/{key}/{plan_date}')
+def get_outages(key: int, plan_date: str, account=Depends(signed_in)):
+    return list_outages(key, plan_date)
+
+
+@router.put('/reschedule/outages')
+def update_outages(body: OutageUpdate, account=Depends(analyst)):
+    return replace_outages(body, account['username'])
+
+
+@router.post('/reschedule', status_code=202)
+def queue_reschedule(body: RescheduleRequest, account=Depends(analyst)):
+    return submit_reschedule(body, account['username'])
+
+
+@router.get('/reschedule')
+def reschedule_jobs(account=Depends(signed_in)):
+    return list_reschedules()
+
+
+@router.get('/reschedule/{key}')
+def reschedule_result(key: int, account=Depends(signed_in)):
+    return require_row(reschedules, key, '重排任务')
 
 
 @router.get('/runs/{key}/report.csv')
